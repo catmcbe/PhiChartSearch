@@ -35,7 +35,7 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: PhigrosChartAnalyzer-${{ matrix.os }}
+        name: PhiChartSearch-${{ matrix.os }}
         path: |
-          dist/PhigrosChartAnalyzer*
-          !dist/*.spec  # 排除spec文件
+          dist/PhiChartSearch*
+          !dist/*.spec  # 正确排除spec文件（注意语法：无注释，直接写规则）
