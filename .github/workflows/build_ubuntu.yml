@@ -1,0 +1,35 @@
+name: Build Ubuntu Binary
+
+on:
+  push:
+    branches: [ main ]  # 可根据需要修改分支
+  pull_request:
+    branches: [ main ]  # 可根据需要修改分支
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # 使用最新版Ubuntu环境
+
+    steps:
+    - uses: actions/checkout@v4  # 检出代码仓库
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'  # 可根据项目实际Python版本修改
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller  # 安装pyinstaller
+        # 如果有其他依赖，添加在这里（例如：pip install -r requirements.txt）
+
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --onefile --windowed --name="PhigrosChartAnalyzer" ChartAnalyzer.py
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PhigrosChartAnalyzer-ubuntu
+        path: dist/PhigrosChartAnalyzer  # 上传打包好的二进制文件
