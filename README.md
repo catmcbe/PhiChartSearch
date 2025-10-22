@@ -51,8 +51,8 @@ json - 配置文件处理
 
 ### 1. 克隆项目
 ```bash
-git clone [项目地址]
-cd PhigrosChartsAcquisitionTutorial-main
+git clone https://github.com/catmcbe/PhiChartSearch
+cd PhiChartSearch-main
 ```
 
 ### 2. 运行程序
