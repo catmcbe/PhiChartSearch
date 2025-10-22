@@ -13,6 +13,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact-name: PhiChartSearch_linux_x64
+          - os: windows-latest
+            artifact-name: PhiChartSearch_windows_x64
 
     steps:
     - uses: actions/checkout@v4
@@ -28,14 +33,48 @@ jobs:
         pip install pyinstaller
         pip install -r requirements.txt  # 安装项目依赖
 
-    - name: Build with PyInstaller
+    - name: Check font file existence (Linux)
       run: |
-        pyinstaller --onefile --windowed --name="PhiChartSearch" ChartAnalyzer.py
+        if [ -f "Source Han Sans & Saira Hybrid-Regular #2934.ttf" ]; then
+          echo "Font file found"
+        else
+          echo "Error: Font file not found!"
+          exit 1
+        fi
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+
+    - name: Check font file existence (Windows)
+      run: |
+        if exist "Source Han Sans & Saira Hybrid-Regular #2934.ttf" (
+          echo Font file found
+        ) else (
+          echo Error: Font file not found!
+          exit 1
+        )
+      if: matrix.os == 'windows-latest'
+      shell: cmd
+
+    - name: Build with PyInstaller (Linux)
+      run: |
+        pyinstaller --onefile --windowed --name="PhiChartSearch" \
+          --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf:." \
+          ChartAnalyzer.py
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+
+    - name: Build with PyInstaller (Windows)
+      run: |
+        pyinstaller --onefile --windowed --name="PhiChartSearch" ^
+          --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf;." ^
+          ChartAnalyzer.py
+      if: matrix.os == 'windows-latest'
+      shell: cmd
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: PhiChartSearch-${{ matrix.os }}
+        name: ${{ matrix.artifact-name }}
         path: |
           dist/PhiChartSearch*
-          !dist/*.spec  # 正确排除spec文件（注意语法：无注释，直接写规则）
+          !dist/*.spec
