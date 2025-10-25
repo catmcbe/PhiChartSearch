@@ -70,10 +70,8 @@ jobs:
         pyinstaller --onefile --windowed --name="PhiChartSearch" \
           --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf:." \
           ChartAnalyzer.py
-        # 确认构建产物路径
         ls -l dist/
         mv dist/PhiChartSearch "dist/${{ matrix.asset-name }}"
-        # 确认重命名后的文件
         ls -l dist/
       if: matrix.os == 'ubuntu-latest'
       shell: bash
@@ -83,13 +81,11 @@ jobs:
         pyinstaller --onefile --windowed --name="PhiChartSearch" ^
           --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf;." ^
           ChartAnalyzer.py
-        # 确认构建产物路径
-        dir dist/
+        dir dist\
         ren "dist\PhiChartSearch.exe" "${{ matrix.asset-name }}"
-        # 确认重命名后的文件
-        dir dist/
+        dir dist\
       if: matrix.os == 'windows-latest'
-      shell: cmd
+      shell: cmd  # 严格使用cmd语法
 
     - name: Upload binary artifact
       uses: actions/upload-artifact@v4
@@ -97,8 +93,6 @@ jobs:
         name: ${{ matrix.asset-name }}
         path: dist/${{ matrix.asset-name }}
         if-no-files-found: error
-      # 上传后显示artifact信息
-      continue-on-error: false
 
   release:
     needs: build
@@ -114,21 +108,20 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: ./artifacts  # 下载到当前目录的artifacts文件夹
-          merge-multiple: true  # 合并多个artifact到同一目录
+          path: ./artifacts
+          merge-multiple: true
 
       - name: List downloaded artifacts
         run: |
-          # 显示下载的文件列表，用于调试路径
           ls -lR ./artifacts
+        shell: bash
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
-          body_path: release.md  # 正确读取摘要
-          # 直接指定artifact文件的绝对路径
+          body_path: release.md
           files: |
             ./artifacts/PhiChartSearch_${{ github.event.inputs.version }}_linux_x64
             ./artifacts/PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe
