@@ -37,13 +37,13 @@ jobs:
     - name: 配置Python环境
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'  # 根据项目实际Python版本调整
+        python-version: '3.10'
 
     - name: 安装依赖包
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
-        pip install -r requirements.txt  # 确保包含PyQt相关依赖
+        pip install -r requirements.txt
 
     - name: 检查字体文件（Linux）
       run: |
@@ -70,7 +70,9 @@ jobs:
         pyinstaller --onefile --windowed --name="${{ matrix.asset-name }}" \
           --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf:." \
           QT_ChartAnalyzer.py
-        ls -l dist/  # 查看构建结果
+        # 确认构建产物路径和名称
+        echo "Linux 构建产物："
+        ls -l dist/
       if: matrix.os == 'ubuntu-latest'
       shell: bash
 
@@ -79,7 +81,9 @@ jobs:
         pyinstaller --onefile --windowed --name="${{ matrix.asset-name }}" ^
           --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf;." ^
           QT_ChartAnalyzer.py
-        dir dist\  # 查看构建结果
+        # 确认构建产物路径和名称
+        echo "Windows 构建产物："
+        dir dist\
       if: matrix.os == 'windows-latest'
       shell: cmd
 
@@ -87,7 +91,10 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.asset-name }}
-        path: dist/${{ matrix.asset-name }}${{ matrix.ext }}
+        # 直接使用dist目录下的产物（避免路径拼接错误）
+        path: |
+          dist/${{ matrix.asset-name }}
+          dist/${{ matrix.asset-name }}${{ matrix.ext }}
         if-no-files-found: error
 
   release:
@@ -106,10 +113,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
-          merge-multiple: true
 
-      - name: 列出下载的产物
+      - name: 列出下载的产物（调试用）
         run: |
+          echo "下载的产物结构："
           ls -lR ./artifacts
         shell: bash
 
@@ -119,8 +126,9 @@ jobs:
           tag_name: ${{ github.event.inputs.version }}
           name: PyQT 版发布 ${{ github.event.inputs.version }}
           body_path: release.md
+          # 匹配 artifact 中的产物（ artifact 名称即文件名）
           files: |
-            ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_linux_x64
-            ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe
+            ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_linux_x64/*
+            ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
