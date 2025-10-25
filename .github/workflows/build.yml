@@ -29,10 +29,10 @@ jobs:
             system: windows
             ext: '.exe'
             asset-name: PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe
-      fail-fast: false  # 一个平台失败不影响另一个平台构建
+      fail-fast: false  # 一个平台失败不影响另一个
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4  # 检出代码（包含release.md）
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -90,25 +90,36 @@ jobs:
         path: dist/${{ matrix.asset-name }}
         if-no-files-found: error
 
-  # 单独的发布任务，依赖两个平台的构建完成
   release:
-    needs: build  # 等待两个平台构建都完成
+    needs: build
     if: ${{ github.event.inputs.publish_release == 'true' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 授予创建Release的权限
+      contents: write  # 授予发布权限
 
     steps:
+      - name: Checkout code (to get release.md)
+        uses: actions/checkout@v4
+
+      - name: Read release notes from release.md
+        id: release_notes
+        run: |
+          # 读取release.md内容并处理换行符（适配GitHub Release格式）
+          NOTES=$(cat release.md | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "notes=$NOTES" >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts  # 下载所有产物到artifacts目录
+          path: artifacts
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
+          body: ${{ steps.release_notes.outputs.notes }}  # 使用release.md内容作为描述
           files: |
             artifacts/PhiChartSearch_${{ github.event.inputs.version }}_linux_x64/PhiChartSearch_${{ github.event.inputs.version }}_linux_x64
             artifacts/PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe/PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe
