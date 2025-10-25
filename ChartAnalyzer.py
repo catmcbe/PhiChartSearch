@@ -4,6 +4,7 @@ import random
 import string
 import shutil
 import subprocess
+import tkinter as tk  # 添加tk模块的导入
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
@@ -11,6 +12,7 @@ from tkinter import filedialog
 from PIL import Image, ImageDraw, ImageFont
 import wave
 import contextlib
+import sv_ttk  # 导入Sun-Valley-ttk主题
 
 # 配置文件路径
 CONFIG_FILE = "chart_analyzer_config.json"
@@ -282,7 +284,8 @@ def analyseJsonChart(chartFile: str):
 
 def info(*msg, step=" ", end=""):
     msg = step.join(msg)+end
-    BL1.config(text=msg)
+    if 'BL1' in globals() and BL1.winfo_exists():
+        BL1.config(text=msg)
     top.update()
 
 # 工程相关变量
@@ -297,20 +300,45 @@ def create_project_first():
     """首次创建工程"""
     create_window = Toplevel(top)
     create_window.title("创建谱面工程")
-    create_window.geometry("500x450")
+    create_window.geometry("550x500")
     create_window.resizable(0, 0)
     
+    # 应用亮色主题
+    sv_ttk.set_theme("light")
+    
+    # 创建一个框架作为容器
+    main_frame = ttk.Frame(create_window, padding="20")
+    main_frame.pack(fill=BOTH, expand=True)
+    
+    # 标题
+    title_label = ttk.Label(main_frame, text="创建新的谱面工程", font=("微软雅黑", 14, "bold"))
+    title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
+    
     # 工程文件夹选择
-    L_folder = Label(create_window, text="工程文件夹（必填）")
-    L_folder.place(x=20, y=20)
+    L_folder = ttk.Label(main_frame, text="工程文件夹（必填）", font=("微软雅黑", 10))
+    L_folder.grid(row=1, column=0, sticky=W, pady=5)
     
-    E_folder = ttk.Entry(create_window)
-    E_folder.place(x=20, y=45, width=380, height=30)
+    folder_frame = ttk.Frame(main_frame)
+    folder_frame.grid(row=2, column=0, columnspan=2, sticky=(W, E), pady=5)
     
-    B_browse_folder = ttk.Button(create_window, text="浏览", command=lambda: browse_project_folder(E_folder))
-    B_browse_folder.place(x=410, y=45, width=70, height=30)
+    E_folder = ttk.Entry(folder_frame, font=("微软雅黑", 10))
+    E_folder.pack(side=LEFT, fill=X, expand=True, padx=(0, 10))
+    
+    # 创建按钮样式
+    button_style = ttk.Style()
+    button_style.configure("TButton", font=("微软雅黑", 10))
+    
+    B_browse_folder = ttk.Button(folder_frame, text="浏览", command=lambda: browse_project_folder(E_folder))
+    B_browse_folder.pack(side=RIGHT)
+    
+    # 分隔线
+    separator1 = ttk.Separator(main_frame, orient=HORIZONTAL)
+    separator1.grid(row=3, column=0, columnspan=2, sticky=(W, E), pady=15)
     
     # 谱面信息输入
+    info_label = ttk.Label(main_frame, text="谱面信息", font=("Microsoft YaHei", 12, "bold"))
+    info_label.grid(row=4, column=0, columnspan=2, sticky=W, pady=(0, 10))
+    
     fields = [
         ("谱面名称（必填）", "Name", ""),
         ("难度（必填）", "Level", ""),
@@ -320,18 +348,27 @@ def create_project_first():
     
     entries = {}
     for i, (label_text, field_name, default_value) in enumerate(fields):
-        label = Label(create_window, text=label_text)
-        label.place(x=20, y=90 + i*40)
+        label = ttk.Label(main_frame, text=label_text, font=("微软雅黑", 10))
+        label.grid(row=5+i, column=0, sticky=W, pady=5)
         
-        entry = ttk.Entry(create_window)
-        entry.place(x=20, y=115 + i*40, width=460, height=30)
+        entry = ttk.Entry(main_frame, font=("微软雅黑", 10))
+        entry.grid(row=5+i, column=1, sticky=(W, E), pady=5, padx=(10, 0))
         entry.insert(0, default_value)
         entries[field_name] = entry
     
+    # 创建按钮和复选框样式
+    button_style = ttk.Style()
+    button_style.configure("TButton", font=("微软雅黑", 10))
+    button_style.configure("TCheckbutton", font=("微软雅黑", 10))
+    
     # 是否自创建曲绘复选框
     var_create_art = BooleanVar()
-    CB_create_art = ttk.Checkbutton(create_window, text="是否自创建曲绘", variable=var_create_art)
-    CB_create_art.place(x=20, y=270)
+    CB_create_art = ttk.Checkbutton(main_frame, text="是否自创建曲绘", variable=var_create_art)
+    CB_create_art.grid(row=9, column=0, columnspan=2, sticky=W, pady=10)
+    
+    # 按钮框架
+    button_frame = ttk.Frame(main_frame)
+    button_frame.grid(row=10, column=0, columnspan=2, pady=20)
     
     # 创建按钮
     def create_project():
@@ -399,8 +436,11 @@ def create_project_first():
         # 打开搜索窗口
         open_search_window()
     
-    B_create = ttk.Button(create_window, text="创建工程", command=create_project)
-    B_create.place(x=350, y=400, width=120, height=40)
+    B_create = ttk.Button(button_frame, text="创建工程", command=create_project, style="Accent.TButton")
+    B_create.pack(side=RIGHT, padx=5)
+    
+    # 配置网格权重
+    main_frame.columnconfigure(1, weight=1)
 
 def browse_project_folder(entry_widget):
     """浏览选择工程文件夹"""
@@ -452,6 +492,9 @@ def add_chart_to_project():
         messagebox.showinfo("成功", f"谱面已添加到工程 '{current_project['info']['Name']}'！")
         update_project_display()
         
+        # 关闭谱面搜索窗口
+        search_window.destroy()
+        
         # 打开音频筛选窗口
         open_audio_search_window()
         
@@ -481,7 +524,8 @@ def update_project_display():
     if current_project:
         project_info = current_project["info"]
         # 可以在界面上显示当前工程信息
-        info(f"当前工程: {project_info['Name']} ({project_info['Level']})")
+        if 'BL1' in globals() and BL1.winfo_exists():
+            BL1.config(text=f"当前工程: {project_info['Name']} ({project_info['Level']})")
 
 def selectPath():
     global fileDir
@@ -506,6 +550,7 @@ def main():
     fileDir = E1.get()
     if not os.path.exists(fileDir):
         messagebox.showerror("错误", "路径不存在。")
+        return
 
     difficulty = E2.get()
     targetNumber = E3.get()
@@ -539,10 +584,29 @@ def main():
     fileList = os.listdir(fileDir)
     fileCount = len(fileList)
     chartObjectsList = []
+    
+    # 初始化进度条
+    if 'progress_var_audio' in globals() and progress_var_audio is not None:
+        progress_var_audio.set(0)
+        if 'progress_bar_audio' in globals() and progress_bar_audio is not None:
+            progress_bar_audio.update()
+    
+    processed_count = 0
 
     for i in range(len(fileList)):
         file = fileList[i]
         fileName = fileList[i]
+        
+        # 更新进度条
+        progress = (i / fileCount) * 50  # 分析阶段占50%
+        if 'progress_var' in globals() and progress_var is not None:
+            progress_var.set(progress)
+            if 'progress_bar' in globals() and progress_bar is not None:
+                progress_bar.update()
+        
+        # 更新UI防止未响应
+        if 'top' in globals() and top is not None:
+            top.update()
 
         # 确认是否含有关键词
         # 跳过不含关键词的文件
@@ -557,20 +621,50 @@ def main():
         try:
             chart = analyseJsonChart(os.path.join(fileDir, file))
             chartObjectsList.append(chart)
-            info(f"{i}/{fileCount}\t分析完成{chart}")
+            processed_count += 1
+            if 'BL1' in globals() and BL1.winfo_exists():
+                BL1.config(text=f"{i+1}/{fileCount}\t分析完成{chart}")
         except KeyError as e:
-            info(f"{i}/{fileCount}\t分析'{file}'时遇到 KeyError:" + str(e))
+            if 'BL1' in globals() and BL1.winfo_exists():
+                BL1.config(text=f"{i+1}/{fileCount}\t分析'{file}'时遇到 KeyError:" + str(e))
+        except Exception as e:
+            if 'BL1' in globals() and BL1.winfo_exists():
+                BL1.config(text=f"{i+1}/{fileCount}\t分析'{file}'时出错: {str(e)}")
 
     # 计算匹配度
-    info(f"正在对 {fileCount} 个铺面文件进行匹配。")
-    chart.sortingScore = 0
+    if 'BL1' in globals() and BL1.winfo_exists():
+        BL1.config(text=f"正在对 {len(chartObjectsList)} 个铺面文件进行匹配。")
+    
+    # 重置分数
     for chart in chartObjectsList:
+        chart.sortingScore = 0
+    
+    # 计算匹配度并更新进度
+    for i, chart in enumerate(chartObjectsList):
         if targetNumber is not None:
             chart.sortingScore += max(0, 10 - abs(targetNumber - chart.objectNumber))
         if targetBPM is not None:
             chart.sortingScore += max(0, 10 - 0.2 * abs(targetBPM - chart.bpm))
         if targetMaxTime is not None:
             chart.sortingScore += max(0, 10 - 0.2 * abs(targetMaxTime - chart.audioLength))
+        
+        # 更新进度条（匹配阶段占50%）
+        progress = 50 + (i / len(chartObjectsList)) * 50
+        if 'progress_var' in globals() and progress_var is not None:
+            progress_var.set(progress)
+            if 'progress_bar' in globals() and progress_bar is not None:
+                progress_bar.update()
+        
+        # 更新UI防止未响应
+        if 'top' in globals() and top is not None:
+            top.update()
+    
+    # 完成进度条
+    if 'progress_var' in globals() and progress_var is not None:
+        progress_var.set(100)
+        if 'progress_bar' in globals() and progress_bar is not None:
+            progress_bar.update()
+    
     # 进行排序
     sortedList: list["Chart"] = sorted(chartObjectsList, key=sortingCallBack, reverse=True)[:10]
 
@@ -578,11 +672,14 @@ def main():
     for child in T1.get_children():
         T1.delete(child)
     if len(sortedList) == 0:
-        info("匹配完成。未找到任何匹配项目。")
+        if 'BL1' in globals() and BL1.winfo_exists():
+            BL1.config(text="匹配完成。未找到任何匹配项目。")
     elif sortedList[0].sortingScore <= 0:
-        info("匹配完成。未找到任何匹配项目。")
+        if 'BL1' in globals() and BL1.winfo_exists():
+            BL1.config(text="匹配完成。未找到任何匹配项目。")
     else:
-        info("匹配完成，最佳匹配项为："+sortedList[0].fileName)
+        if 'BL1' in globals() and BL1.winfo_exists():
+            BL1.config(text="匹配完成，最佳匹配项为："+sortedList[0].fileName)
         for i in range(len(sortedList)):
             chart = sortedList[i]
             if chart.sortingScore <= 0:
@@ -614,61 +711,124 @@ def check_existing_project():
     return False
 
 def open_audio_search_window():
-    """打开音频筛选窗口"""
-    global audio_window, E_audio_folder, E_audio_duration, T_audio, BL_audio
+    """打开音频搜索窗口"""
+    global audio_window, E_audio_folder, E_audio_duration, T_audio, BL_audio, progress_var_audio, progress_bar_audio
     
     # 关闭其他窗口
     if 'search_window' in globals() and search_window is not None and search_window.winfo_exists():
         search_window.destroy()
     
+    # 导入tk模块（用于进度条）
+    import tkinter as tk
+    
     audio_window = Toplevel(top)
-    audio_window.title("音频筛选")
-    audio_window.geometry("700x500")
+    audio_window.title("音频搜索")
+    audio_window.geometry("750x750")  # 增加窗口高度
     audio_window.resizable(0, 0)
     
-    # 全局变量引用
-    global E_audio_folder, E_audio_duration, T_audio, BL_audio
+    # 应用主题到新窗口
+    sv_ttk.set_theme("light")
+    
+    # 创建一个框架作为容器
+    main_frame = ttk.Frame(audio_window, padding="20")
+    main_frame.pack(fill=BOTH, expand=True)
+    
+    # 标题
+    title_label = ttk.Label(main_frame, text="音频筛选", font=("微软雅黑", 14, "bold"))
+    title_label.grid(row=0, column=0, columnspan=4, pady=(0, 15))
     
     # 音频文件夹选择
-    L_audio_folder = Label(audio_window, text="音频文件夹（wav）")
-    L_audio_folder.place(x=20,y=20)
-    E_audio_folder = ttk.Entry(audio_window)
-    E_audio_folder.place(x=20,y=40,width=560,height=30)
-    B_audio_browse = ttk.Button(audio_window, text="选取", command=select_audio_folder)
-    B_audio_browse.place(x=600,y=40,width=80,height=30)
+    L_audio_folder = ttk.Label(main_frame, text="音频文件夹（wav）", font=("微软雅黑", 10))
+    L_audio_folder.grid(row=1, column=0, sticky=W, pady=5)
+    
+    folder_frame = ttk.Frame(main_frame)
+    folder_frame.grid(row=2, column=0, columnspan=4, sticky=(W, E), pady=5)
+    
+    E_audio_folder = ttk.Entry(folder_frame, font=("微软雅黑", 10))
+    E_audio_folder.pack(side=LEFT, fill=X, expand=True, padx=(0, 10))
+    
+    # 如果有保存的音频文件夹路径，则加载
+    if 'audio_folder' in globals() and audio_folder:
+        E_audio_folder.insert(0, audio_folder)
+    
+    # 创建按钮样式
+    button_style = ttk.Style()
+    button_style.configure("TButton", font=("微软雅黑", 10))
+    
+    # 选取按钮
+    B_audio_browse = ttk.Button(folder_frame, text="选取", command=select_audio_folder)
+    B_audio_browse.pack(side=RIGHT)
     
     # 音频时长筛选
-    L_audio_duration = Label(audio_window, text="目标音频时长（秒，精确到小数点后两位）")
-    L_audio_duration.place(x=20,y=80)
-    E_audio_duration = ttk.Entry(audio_window)
-    E_audio_duration.place(x=20,y=100,width=200,height=30)
+    filter_frame = ttk.LabelFrame(main_frame, text="筛选条件", padding="10")
+    filter_frame.grid(row=3, column=0, columnspan=4, sticky=(W, E), pady=15)
     
-    B_audio_filter = ttk.Button(audio_window, text="开始筛选", command=audio_main)
-    B_audio_filter.place(x=240,y=80,width=90,height=50)
+    L_audio_duration = ttk.Label(filter_frame, text="目标音频时长（秒，精确到小数点后两位）", font=("微软雅黑", 10))
+    L_audio_duration.grid(row=0, column=0, sticky=W, pady=5)
+    
+    duration_frame = ttk.Frame(filter_frame)
+    duration_frame.grid(row=1, column=0, sticky=(W, E), pady=5)
+    
+    E_audio_duration = ttk.Entry(duration_frame, font=("微软雅黑", 10), width=20)
+    E_audio_duration.pack(side=LEFT)
+    
+    # 创建按钮样式
+    button_style = ttk.Style()
+    button_style.configure("TButton", font=("微软雅黑", 10))
+    
+    B_audio_filter = ttk.Button(duration_frame, text="开始筛选", command=audio_main, style="Accent.TButton")
+    B_audio_filter.pack(side=LEFT, padx=(15, 0))
     
     # 当前工程信息显示
     if current_project:
         project_info = current_project["info"]
-        L_project = Label(audio_window, text=f"当前工程: {project_info['Name']} ({project_info['Level']})", fg="blue")
-        L_project.place(x=20, y=140)
+        project_frame = ttk.LabelFrame(main_frame, text="当前工程", padding="10")
+        project_frame.grid(row=4, column=0, columnspan=4, sticky=(W, E), pady=15)
+        
+        L_project = ttk.Label(project_frame, text=f"{project_info['Name']} ({project_info['Level']})", font=("微软雅黑", 10, "bold"))
+        L_project.pack()
 
     # 音频列表
-    T_audio = ttk.Treeview(audio_window)
-    T_audio.place(x=20,y=170,width=660,height=250)
+    list_frame = ttk.LabelFrame(main_frame, text="搜索结果", padding="10")
+    list_frame.grid(row=6, column=0, columnspan=5, sticky=(W, E, N, S), pady=10)
+    
+    # 设置LabelFrame的字体样式
+    label_frame_style = ttk.Style()
+    label_frame_style.configure("TLabelframe.Label", font=("微软雅黑", 10, "bold"))
+    
+    # 创建进度条
+    progress_var_audio = tk.DoubleVar()
+    progress_bar_audio = ttk.Progressbar(list_frame, variable=progress_var_audio, maximum=100)
+    progress_bar_audio.pack(fill=X, pady=(0, 5))
+    
+    # 创建表格样式
+    tree_style = ttk.Style()
+    tree_style.configure("Treeview", font=("微软雅黑", 10))
+    tree_style.configure("Treeview.Heading", font=("微软雅黑", 10, "bold"))
+    
+    T_audio = ttk.Treeview(list_frame, height=22)  # 增加表格高度
+    T_audio.pack(fill=BOTH, expand=True)
     
     # 按钮区域
-    B_add_audio_to_project = ttk.Button(audio_window, text="添加到工程", command=add_audio_to_project)
-    B_add_audio_to_project.place(x=20,y=430,width=120,height=40)
+    button_frame = ttk.Frame(main_frame)
+    button_frame.grid(row=6, column=0, columnspan=4, pady=10)
     
-    B_play_audio = ttk.Button(audio_window, text="打开音频播放", command=play_audio)
-    B_play_audio.place(x=150,y=430,width=120,height=40)
+    # 创建按钮样式
+    button_style = ttk.Style()
+    button_style.configure("TButton", font=("微软雅黑", 10))
     
-    B_open_project_folder = ttk.Button(audio_window, text="打开工程文件夹", command=open_project_folder)
-    B_open_project_folder.place(x=280,y=430,width=120,height=40)
+    B_add_audio_to_project = ttk.Button(button_frame, text="添加到工程", command=add_audio_to_project, style="Accent.TButton")
+    B_add_audio_to_project.pack(side=LEFT, padx=(0, 10))
+    
+    B_play_audio = ttk.Button(button_frame, text="播放选中音频", command=play_audio)
+    B_play_audio.pack(side=LEFT, padx=(0, 10))
+    
+    B_open_project_folder = ttk.Button(button_frame, text="打开工程文件夹", command=open_project_folder)
+    B_open_project_folder.pack(side=LEFT)
 
     # 状态栏
-    BL_audio = Label(audio_window, bg="white", anchor="w")
-    BL_audio.place(x=0,y=480,width=700,height=20)
+    BL_audio = ttk.Label(main_frame, anchor="w", font=("微软雅黑", 10))
+    BL_audio.grid(row=7, column=0, columnspan=4, sticky=(W, E), pady=(10, 0))
 
     # 配置表格列
     column = ["1", "2", "3"]
@@ -679,6 +839,10 @@ def open_audio_search_window():
     T_audio.column("1", width=400)
     T_audio.column("2", width=100)
     T_audio.column("3", width=100)
+    
+    # 配置网格权重
+    main_frame.columnconfigure(0, weight=1)
+    main_frame.rowconfigure(5, weight=1)
 
 def select_audio_folder():
     """选择音频文件夹"""
@@ -716,21 +880,47 @@ def audio_main():
     audio_files = [f for f in os.listdir(audio_folder) if f.lower().endswith('.wav')]
     audioObjectsList = []
     
+    # 初始化进度条
+    if 'progress_var_audio' in globals() and progress_var_audio is not None:
+        progress_var_audio.set(0)
+        if 'progress_bar_audio' in globals() and progress_bar_audio is not None:
+            progress_bar_audio.update()
+    
     for i, audio_file in enumerate(audio_files):
+        # 更新进度条（分析阶段占50%）
+        progress = (i / len(audio_files)) * 50
+        if 'progress_var_audio' in globals() and progress_var_audio is not None:
+            progress_var_audio.set(progress)
+            if 'progress_bar_audio' in globals() and progress_bar_audio is not None:
+                progress_bar_audio.update()
+        
+        # 更新UI防止未响应
+        if 'audio_window' in globals() and audio_window is not None:
+            audio_window.update()
+        
         audio_path = os.path.join(audio_folder, audio_file)
         duration = get_audio_duration(audio_path)
         
         if duration is not None:
             audio_obj = AudioFile(audio_file, duration)
             audioObjectsList.append(audio_obj)
-            BL_audio.config(text=f"{i+1}/{len(audio_files)}\t分析完成 {audio_file}")
+            if 'BL_audio' in globals() and BL_audio.winfo_exists():
+                BL_audio.config(text=f"{i+1}/{len(audio_files)}\t分析完成 {audio_file}")
             audio_window.update()
     
     # 计算匹配度
-    BL_audio.config(text=f"正在对 {len(audioObjectsList)} 个音频文件进行匹配...")
+    if 'BL_audio' in globals() and BL_audio.winfo_exists():
+        BL_audio.config(text=f"正在对 {len(audioObjectsList)} 个音频文件进行匹配...")
     audio_window.update()
     
-    for audio_obj in audioObjectsList:
+    for i, audio_obj in enumerate(audioObjectsList):
+        # 更新进度条（匹配阶段占40%）
+        progress = 50 + (i / len(audioObjectsList)) * 40
+        if 'progress_var_audio' in globals() and progress_var_audio is not None:
+            progress_var_audio.set(progress)
+            if 'progress_bar_audio' in globals() and progress_bar_audio is not None:
+                progress_bar_audio.update()
+        
         # 匹配度计算：时长越接近，匹配度越高
         time_diff = abs(target_duration - audio_obj.duration)
         audio_obj.sortingScore = max(0, 10 - time_diff * 2)  # 每差1秒扣2分
@@ -743,11 +933,14 @@ def audio_main():
         T_audio.delete(child)
     
     if len(audioSortedList) == 0:
-        BL_audio.config(text="匹配完成。未找到任何匹配项目。")
+        if 'BL_audio' in globals() and BL_audio.winfo_exists():
+            BL_audio.config(text="匹配完成。未找到任何匹配项目。")
     elif audioSortedList[0].sortingScore <= 0:
-        BL_audio.config(text="匹配完成。未找到任何匹配项目。")
+        if 'BL_audio' in globals() and BL_audio.winfo_exists():
+            BL_audio.config(text="匹配完成。未找到任何匹配项目。")
     else:
-        BL_audio.config(text=f"匹配完成，最佳匹配项为：{audioSortedList[0].fileName}")
+        if 'BL_audio' in globals() and BL_audio.winfo_exists():
+            BL_audio.config(text=f"匹配完成，最佳匹配项为：{audioSortedList[0].fileName}")
         for audio_obj in audioSortedList:
             if audio_obj.sortingScore <= 0:
                 continue
@@ -757,10 +950,16 @@ def audio_main():
                     audio_obj.duration,
                     f"{audio_obj.sortingScore / 10:.2%}"
                 ))
+    
+    # 更新进度条完成
+    if 'progress_var_audio' in globals() and progress_var_audio is not None:
+        progress_var_audio.set(100)
+        if 'progress_bar_audio' in globals() and progress_bar_audio is not None:
+            progress_bar_audio.update()
 
 def add_audio_to_project():
     """添加选中的音频到工程"""
-    global current_project
+    global current_project, E_audio_folder, T_audio, audio_window
     
     if not current_project:
         messagebox.showwarning("警告", "没有当前工程！")
@@ -786,6 +985,10 @@ def add_audio_to_project():
         # 复制音频文件到工程文件夹
         source_path = os.path.join(E_audio_folder.get(), audio_filename)
         shutil.copy2(source_path, target_path)
+        
+        # 关闭音频搜索窗口
+        # if 'audio_window' in globals() and audio_window.winfo_exists():
+        #     audio_window.destroy()
         
         messagebox.showinfo("成功", f"音频已添加到工程 '{current_project['info']['Name']}'！")
         
@@ -816,73 +1019,133 @@ def play_audio():
 
 def open_search_window():
     """打开谱面搜索窗口"""
+    global search_window, E1, E2, E3, E4, E5, T1, BL1, progress_var, progress_bar
+    
     # 关闭其他窗口
     if 'audio_window' in globals() and audio_window is not None and audio_window.winfo_exists():
         audio_window.destroy()
     
+    # 导入tk模块（用于进度条）
+    import tkinter as tk
+    
     search_window = Toplevel(top)
     search_window.title("谱面搜索")
-    search_window.geometry("700x500")
+    search_window.geometry("750x650")
     search_window.resizable(0, 0)
     
-    # 全局变量引用
-    global E1, E2, E3, E4, E5, T1, BL1
+    # 应用主题到新窗口
+    sv_ttk.set_theme("light")
+    
+    # 创建一个框架作为容器
+    main_frame = ttk.Frame(search_window, padding="20")
+    main_frame.pack(fill=BOTH, expand=True)
+    
+    # 标题
+    title_label = ttk.Label(main_frame, text="谱面搜索", font=("微软雅黑", 14, "bold"))
+    title_label.grid(row=0, column=0, columnspan=5, pady=(0, 15))
     
     # 谱面文件夹选择
-    L1 = Label(search_window, text="谱面文件夹（TextAsset）")
-    L1.place(x=20,y=20)
-    E1 = ttk.Entry(search_window)
-    E1.place(x=20,y=40,width=560,height=30)
-    B1 = ttk.Button(search_window, text="选取", command=selectPath)
-    B1.place(x=600,y=40,width=80,height=30)
+    L1 = ttk.Label(main_frame, text="谱面文件夹（TextAsset）", font=("微软雅黑", 10))
+    L1.grid(row=1, column=0, sticky=W, pady=5)
+    
+    folder_frame = ttk.Frame(main_frame)
+    folder_frame.grid(row=2, column=0, columnspan=5, sticky=(W, E), pady=5)
+    
+    E1 = ttk.Entry(folder_frame, font=("微软雅黑", 10))
+    E1.pack(side=LEFT, fill=X, expand=True, padx=(0, 10))
+    
+    # 创建按钮样式
+    button_style = ttk.Style()
+    button_style.configure("TButton", font=("微软雅黑", 10))
+    
+    B1 = ttk.Button(folder_frame, text="选取", command=selectPath)
+    B1.pack(side=RIGHT)
     
     # 设置初始文件夹路径
     E1.insert(0, fileDir)
 
     # 筛选条件
-    L2 = Label(search_window, text="关键词(填写EZ.HD.IN.AT等)")
-    L2.place(x=20,y=80)
-    E2 = ttk.Entry(search_window)
-    E2.place(x=20,y=100,width=100,height=30)
+    filter_label = ttk.Label(main_frame, text="筛选条件", font=("微软雅黑", 12, "bold"))
+    filter_label.grid(row=3, column=0, columnspan=5, sticky=W, pady=(15, 10))
 
-    L3 = Label(search_window, text="物量")
-    L3.place(x=140,y=80)
-    E3 = ttk.Entry(search_window)
-    E3.place(x=140,y=100,width=100,height=30)
+    # 筛选条件框架
+    filter_frame = ttk.Frame(main_frame)
+    filter_frame.grid(row=4, column=0, columnspan=5, sticky=(W, E), pady=5)
+    
+    L2 = ttk.Label(filter_frame, text="关键词", font=("微软雅黑", 10))
+    L2.grid(row=0, column=0, sticky=W, padx=(0, 5))
+    E2 = ttk.Entry(filter_frame, font=("微软雅黑", 10), width=15)
+    E2.grid(row=0, column=1, sticky=W, padx=(0, 15))
 
-    L4 = Label(search_window, text="BPM")
-    L4.place(x=260,y=80)
-    E4 = ttk.Entry(search_window)
-    E4.place(x=260,y=100,width=100,height=30)
+    L3 = ttk.Label(filter_frame, text="物量", font=("微软雅黑", 10))
+    L3.grid(row=0, column=2, sticky=W, padx=(0, 5))
+    E3 = ttk.Entry(filter_frame, font=("微软雅黑", 10), width=15)
+    E3.grid(row=0, column=3, sticky=W, padx=(0, 15))
 
-    L5 = Label(search_window, text="音频长度")
-    L5.place(x=380,y=80)
-    E5 = ttk.Entry(search_window)
-    E5.place(x=380,y=100,width=100,height=30)
+    L4 = ttk.Label(filter_frame, text="BPM", font=("微软雅黑", 10))
+    L4.grid(row=1, column=0, sticky=W, padx=(0, 5), pady=(10, 0))
+    E4 = ttk.Entry(filter_frame, font=("微软雅黑", 10), width=15)
+    E4.grid(row=1, column=1, sticky=W, padx=(0, 15), pady=(10, 0))
 
-    B2 = ttk.Button(search_window, text="开始筛选", command=main)
-    B2.place(x=500,y=80,width=90,height=50)
+    L5 = ttk.Label(filter_frame, text="音频长度", font=("微软雅黑", 10))
+    L5.grid(row=1, column=2, sticky=W, padx=(0, 5), pady=(10, 0))
+    E5 = ttk.Entry(filter_frame, font=("微软雅黑", 10), width=15)
+    E5.grid(row=1, column=3, sticky=W, padx=(0, 15), pady=(10, 0))
+
+    # 创建按钮样式
+    button_style = ttk.Style()
+    button_style.configure("TButton", font=("微软雅黑", 10))
+    
+    B2 = ttk.Button(filter_frame, text="开始筛选", command=main, style="Accent.TButton")
+    B2.grid(row=0, column=4, rowspan=2, padx=(15, 0))
     
     # 当前工程信息显示
     if current_project:
         project_info = current_project["info"]
-        L_project = Label(search_window, text=f"当前工程: {project_info['Name']} ({project_info['Level']})", fg="blue")
-        L_project.place(x=20, y=140)
+        project_frame = ttk.LabelFrame(main_frame, text="当前工程", padding="10")
+        project_frame.grid(row=5, column=0, columnspan=5, sticky=(W, E), pady=15)
+        
+        L_project = ttk.Label(project_frame, text=f"{project_info['Name']} ({project_info['Level']})", font=("Microsoft YaHei", 10, "bold"))
+        L_project.pack()
 
     # 谱面列表
-    T1 = ttk.Treeview(search_window)
-    T1.place(x=20,y=170,width=660,height=250)
+    list_frame = ttk.LabelFrame(main_frame, text="搜索结果", padding="10")
+    list_frame.grid(row=6, column=0, columnspan=5, sticky=(W, E, N, S), pady=10)
+    
+    # 设置LabelFrame的字体样式
+    label_frame_style = ttk.Style()
+    label_frame_style.configure("TLabelframe.Label", font=("微软雅黑", 10, "bold"))
+    
+    # 创建进度条
+    progress_var = tk.DoubleVar()
+    progress_bar = ttk.Progressbar(list_frame, variable=progress_var, maximum=100)
+    progress_bar.pack(fill=X, pady=(0, 5))
+    
+    # 创建表格样式
+    tree_style = ttk.Style()
+    tree_style.configure("Treeview", font=("微软雅黑", 10))
+    tree_style.configure("Treeview.Heading", font=("微软雅黑", 10, "bold"))
+    
+    T1 = ttk.Treeview(list_frame, height=18)
+    T1.pack(fill=BOTH, expand=True)
     
     # 按钮区域
-    B_add_to_project = ttk.Button(search_window, text="添加到工程", command=add_chart_to_project)
-    B_add_to_project.place(x=20,y=430,width=120,height=40)
+    button_frame = ttk.Frame(main_frame)
+    button_frame.grid(row=7, column=0, columnspan=5, pady=10)
     
-    B_open_folder = ttk.Button(search_window, text="打开工程文件夹", command=open_project_folder)
-    B_open_folder.place(x=150,y=430,width=120,height=40)
+    # 创建按钮样式
+    button_style = ttk.Style()
+    button_style.configure("TButton", font=("微软雅黑", 10))
+    
+    B_add_to_project = ttk.Button(button_frame, text="添加到工程", command=add_chart_to_project)
+    B_add_to_project.pack(side=LEFT, padx=(0, 10))
+    
+    B_open_folder = ttk.Button(button_frame, text="打开工程文件夹", command=open_project_folder)
+    B_open_folder.pack(side=LEFT)
 
     # 状态栏
-    BL1 = Label(search_window, bg="white", anchor="w")
-    BL1.place(x=0,y=480,width=700,height=20)
+    BL1 = ttk.Label(main_frame, anchor="w", font=("微软雅黑", 10))
+    BL1.grid(row=8, column=0, columnspan=5, sticky=(W, E), pady=(10, 0))
 
     # 配置表格列
     column = ["1", "2", "3", "4", "5"]
@@ -892,11 +1155,20 @@ def open_search_window():
     T1.heading("3", text="BPM")
     T1.heading("4", text="谱面时长（秒）")
     T1.heading("5", text="匹配度")
-    T1.column("1", width=200)
-    T1.column("2", width=1)
-    T1.column("3", width=1)
-    T1.column("4", width=1)
-    T1.column("5", width=1)
+    T1.column("1", width=300)
+    T1.column("2", width=80)
+    T1.column("3", width=80)
+    T1.column("4", width=100)
+    T1.column("5", width=80)
+    
+    # 添加滚动条
+    scrollbar = ttk.Scrollbar(list_frame, orient=VERTICAL, command=T1.yview)
+    T1.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side=RIGHT, fill=Y)
+    
+    # 配置网格权重
+    main_frame.columnconfigure(0, weight=1)
+    main_frame.rowconfigure(6, weight=1)
     
     # 关闭主窗口
     top.withdraw()
@@ -909,6 +1181,15 @@ if __name__ == '__main__':
     top = Tk()
     top.withdraw()  # 立即隐藏主窗口
     top.title("ChartAnalyzer")
+    
+    # 应用Sun-Valley-ttk主题
+    sv_ttk.set_theme("dark")  # 设置为深色主题
+    
+    # 设置全局字体
+    top.option_add("*Font", "微软雅黑 10")
+    
+    # 应用亮色主题
+    sv_ttk.set_theme("light")
     
     # 检查是否有现有工程，如果没有则强制创建
     if not check_existing_project():
