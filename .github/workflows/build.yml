@@ -101,13 +101,19 @@ jobs:
       - name: Checkout code (to get release.md)
         uses: actions/checkout@v4
 
-      - name: Read release notes from release.md (preserve newlines)
+      - name: Read release notes from release.md
         id: release_notes
         run: |
-          # 直接读取文件内容，保留原始换行符（不进行URL编码）
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          cat release.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # 使用base64编码避免换行符处理问题
+          NOTES=$(cat release.md | base64 -w 0)
+          echo "notes=$NOTES" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Decode release notes
+        id: decoded_notes
+        run: |
+          # 解码base64内容，恢复原始格式
+          echo "decoded=$(echo ${{ steps.release_notes.outputs.notes }} | base64 -d)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Download all artifacts
@@ -120,7 +126,7 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
-          body: ${{ steps.release_notes.outputs.notes }}  # 直接使用原始换行符内容
+          body: ${{ steps.decoded_notes.outputs.decoded }}  # 使用解码后的内容
           files: |
             artifacts/PhiChartSearch_${{ github.event.inputs.version }}_linux_x64/PhiChartSearch_${{ github.event.inputs.version }}_linux_x64
             artifacts/PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe/PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe
