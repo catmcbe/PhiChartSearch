@@ -1,10 +1,13 @@
 name: Build Multi-Platform Binaries
 
+# 手动触发工作流，需要输入版本号
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（例如：v1.0.0）'
+        required: true
+        type: string
 
 jobs:
   build:
@@ -15,9 +18,11 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         include:
           - os: ubuntu-latest
-            artifact-name: PhiChartSearch_linux_x64
+            system: linux
+            ext: ''
           - os: windows-latest
-            artifact-name: PhiChartSearch_windows_x64
+            system: windows
+            ext: '.exe'
 
     steps:
     - uses: actions/checkout@v4
@@ -31,7 +36,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
-        pip install -r requirements.txt  # 安装项目依赖
+        pip install -r requirements.txt
 
     - name: Check font file existence (Linux)
       run: |
@@ -57,24 +62,31 @@ jobs:
 
     - name: Build with PyInstaller (Linux)
       run: |
+        # 构建基础二进制文件
         pyinstaller --onefile --windowed --name="PhiChartSearch" \
           --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf:." \
           ChartAnalyzer.py
+        # 重命名二进制文件（添加版本号和系统信息）
+        mv dist/PhiChartSearch dist/PhiChartSearch_${{ github.event.inputs.version }}_${{ matrix.system }}_x64
       if: matrix.os == 'ubuntu-latest'
       shell: bash
 
     - name: Build with PyInstaller (Windows)
       run: |
+        # 构建基础二进制文件
         pyinstaller --onefile --windowed --name="PhiChartSearch" ^
           --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf;." ^
           ChartAnalyzer.py
+        # 重命名二进制文件（添加版本号和系统信息）
+        ren dist\PhiChartSearch.exe PhiChartSearch_${{ github.event.inputs.version }}_${{ matrix.system }}_x64.exe
       if: matrix.os == 'windows-latest'
       shell: cmd
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.artifact-name }}
+        # 压缩包名称包含版本号和系统信息
+        name: PhiChartSearch_${{ github.event.inputs.version }}_${{ matrix.system }}_x64
         path: |
-          dist/PhiChartSearch*
+          dist/PhiChartSearch_${{ github.event.inputs.version }}_${{ matrix.system }}_x64${{ matrix.ext }}
           !dist/*.spec
