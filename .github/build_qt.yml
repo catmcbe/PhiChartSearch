@@ -1,0 +1,126 @@
+name: 构建与发布 PyQT 版 ChartAnalyzer
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（例如：v1.0.0）'
+        required: true
+        type: string
+      publish_release:
+        description: '是否发布到GitHub Releases'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    name: 在 ${{ matrix.os }} 上构建 PyQT 版
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            system: linux
+            ext: ''
+            asset-name: PyQT_PhiChartSearch_${{ github.event.inputs.version }}_linux_x64
+          - os: windows-latest
+            system: windows
+            ext: '.exe'
+            asset-name: PyQT_PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: 配置Python环境
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'  # 根据项目实际Python版本调整
+
+    - name: 安装依赖包
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install -r requirements.txt  # 确保包含PyQt相关依赖
+
+    - name: 检查字体文件（Linux）
+      run: |
+        if [ -f "Source Han Sans & Saira Hybrid-Regular #2934.ttf" ]; then
+          echo "字体文件存在"
+        else
+          echo "错误：未找到字体文件！" && exit 1
+        fi
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+
+    - name: 检查字体文件（Windows）
+      run: |
+        if exist "Source Han Sans & Saira Hybrid-Regular #2934.ttf" (
+          echo 字体文件存在
+        ) else (
+          echo 错误：未找到字体文件！ && exit 1
+        )
+      if: matrix.os == 'windows-latest'
+      shell: cmd
+
+    - name: 构建并命名（Linux）
+      run: |
+        pyinstaller --onefile --windowed --name="${{ matrix.asset-name }}" \
+          --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf:." \
+          QT_ChartAnalyzer.py
+        ls -l dist/  # 查看构建结果
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+
+    - name: 构建并命名（Windows）
+      run: |
+        pyinstaller --onefile --windowed --name="${{ matrix.asset-name }}" ^
+          --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf;." ^
+          QT_ChartAnalyzer.py
+        dir dist\  # 查看构建结果
+      if: matrix.os == 'windows-latest'
+      shell: cmd
+
+    - name: 上传二进制产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.asset-name }}
+        path: dist/${{ matrix.asset-name }}${{ matrix.ext }}
+        if-no-files-found: error
+
+  release:
+    needs: build
+    if: ${{ github.event.inputs.publish_release == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    name: 发布 PyQT 版 ${{ github.event.inputs.version }}
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 下载所有产物
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+          merge-multiple: true
+
+      - name: 列出下载的产物
+        run: |
+          ls -lR ./artifacts
+        shell: bash
+
+      - name: 上传到Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: PyQT 版发布 ${{ github.event.inputs.version }}
+          body_path: release.md
+          files: |
+            ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_linux_x64
+            ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
