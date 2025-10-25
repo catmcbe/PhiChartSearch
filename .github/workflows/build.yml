@@ -29,10 +29,10 @@ jobs:
             system: windows
             ext: '.exe'
             asset-name: PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe
-      fail-fast: false  # 一个平台失败不影响另一个
+      fail-fast: false
 
     steps:
-    - uses: actions/checkout@v4  # 检出代码（包含release.md）
+    - uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -95,18 +95,19 @@ jobs:
     if: ${{ github.event.inputs.publish_release == 'true' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 授予发布权限
+      contents: write
 
     steps:
       - name: Checkout code (to get release.md)
         uses: actions/checkout@v4
 
-      - name: Read release notes from release.md
+      - name: Read release notes from release.md (preserve newlines)
         id: release_notes
         run: |
-          # 读取release.md内容并处理换行符（适配GitHub Release格式）
-          NOTES=$(cat release.md | sed ':a;N;$!ba;s/\n/%0A/g')
-          echo "notes=$NOTES" >> $GITHUB_OUTPUT
+          # 直接读取文件内容，保留原始换行符（不进行URL编码）
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat release.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Download all artifacts
@@ -119,7 +120,7 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.version }}
           name: Release ${{ github.event.inputs.version }}
-          body: ${{ steps.release_notes.outputs.notes }}  # 使用release.md内容作为描述
+          body: ${{ steps.release_notes.outputs.notes }}  # 直接使用原始换行符内容
           files: |
             artifacts/PhiChartSearch_${{ github.event.inputs.version }}_linux_x64/PhiChartSearch_${{ github.event.inputs.version }}_linux_x64
             artifacts/PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe/PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe
