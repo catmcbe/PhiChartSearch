@@ -38,11 +38,10 @@ jobs:
 
     - name: 验证文件路径（Linux）
       run: |
-        # 验证 py和ico在同一路径
         if [ -f "QT_ChartAnalyzer.py" ] && [ -f "icon.ico" ]; then
-          echo "文件结构正确：py和ico同目录"
+          echo "文件结构正确"
         else
-          echo "错误：QT_ChartAnalyzer.py或icon.ico不存在于当前目录！" && exit 1
+          echo "错误：文件缺失！" && exit 1
         fi
       if: matrix.os == 'ubuntu-latest'
       shell: bash
@@ -50,9 +49,9 @@ jobs:
     - name: 验证文件路径（Windows）
       run: |
         if exist "QT_ChartAnalyzer.py" if exist "icon.ico" (
-          echo 文件结构正确：py和ico同目录
+          echo 文件结构正确
         ) else (
-          echo 错误：QT_ChartAnalyzer.py或icon.ico不存在于当前目录！ && exit 1
+          echo 错误：文件缺失！ && exit 1
         )
       if: matrix.os == 'windows-latest'
       shell: cmd
@@ -70,29 +69,22 @@ jobs:
 
     - name: 构建（Linux）
       run: |
-        # 关键：将icon.ico打包到根目录（与可执行文件同级）
-        # 适配代码中的"/icon.ico"路径
         pyinstaller --onefile --windowed \
           --name="${{ matrix.asset-name }}" \
-          --icon="icon.ico" \  # 作为程序图标
-          --add-data "icon.ico${{ matrix.data-sep }}." \  # 打包到根目录
+          --icon="icon.ico" \
+          --add-data "icon.ico${{ matrix.data-sep }}." \
           ./QT_ChartAnalyzer.py
-        # 验证打包结果
-        echo "打包后的文件："
         ls -l dist/
       if: matrix.os == 'ubuntu-latest'
       shell: bash
 
     - name: 构建（Windows）
       run: |
-        # 适配Windows下的根目录路径
         pyinstaller --onefile --windowed ^
           --name="${{ matrix.asset-name }}" ^
-          --icon="icon.ico" ^  # 作为程序图标
-          --add-data "icon.ico${{ matrix.data-sep }}." ^  # 打包到根目录
+          --icon="icon.ico" ^
+          --add-data "icon.ico${{ matrix.data-sep }}." ^
           .\QT_ChartAnalyzer.py
-        # 验证打包结果
-        echo 打包后的文件：
         dir dist\
       if: matrix.os == 'windows-latest'
       shell: cmd
@@ -103,7 +95,7 @@ jobs:
         name: ${{ matrix.asset-name }}
         path: |
           dist/${{ matrix.asset-name }}${{ matrix.ext }}
-          dist/icon.ico  # 确保图标被上传
+          dist/icon.ico
         if-no-files-found: error
 
   release:
