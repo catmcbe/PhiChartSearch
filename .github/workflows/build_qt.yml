@@ -34,6 +34,27 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # 新增步骤：检查目标脚本是否存在
+    - name: 验证 QT_ChartAnalyzer.py 存在（Linux）
+      run: |
+        if [ -f "QT_ChartAnalyzer.py" ]; then
+          echo "找到 QT_ChartAnalyzer.py"
+        else
+          echo "错误：未找到 QT_ChartAnalyzer.py！请确认文件名是否正确" && exit 1
+        fi
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+
+    - name: 验证 QT_ChartAnalyzer.py 存在（Windows）
+      run: |
+        if exist "QT_ChartAnalyzer.py" (
+          echo 找到 QT_ChartAnalyzer.py
+        ) else (
+          echo 错误：未找到 QT_ChartAnalyzer.py！请确认文件名是否正确 && exit 1
+        )
+      if: matrix.os == 'windows-latest'
+      shell: cmd
+
     - name: 配置Python环境
       uses: actions/setup-python@v5
       with:
@@ -47,32 +68,31 @@ jobs:
 
     - name: 检查图标文件（Linux）
       run: |
-        # 仅检查图标文件
         if [ -f "icon.ico" ]; then
           echo "图标文件存在"
         else
-          echo "错误：未找到图标文件！" && exit 1
+          echo "错误：未找到 icon.ico！" && exit 1
         fi
       if: matrix.os == 'ubuntu-latest'
       shell: bash
 
     - name: 检查图标文件（Windows）
       run: |
-        # 仅检查图标文件
         if exist "icon.ico" (
           echo 图标文件存在
         ) else (
-          echo 错误：未找到图标文件！ && exit 1
+          echo 错误：未找到 icon.ico！ && exit 1
         )
       if: matrix.os == 'windows-latest'
       shell: cmd
 
     - name: 构建并命名（Linux，仅含图标）
       run: |
+        # 明确指定脚本路径，确保无空格问题
         pyinstaller --onefile --windowed \
           --name="${{ matrix.asset-name }}" \
-          --icon="icon.ico" \  # 仅添加图标
-          QT_ChartAnalyzer.py  # 移除字体文件的--add-data参数
+          --icon="icon.ico" \
+          ./QT_ChartAnalyzer.py  # 增加当前目录前缀，避免路径解析问题
         echo "Linux 构建产物："
         ls -l dist/
       if: matrix.os == 'ubuntu-latest'
@@ -80,10 +100,11 @@ jobs:
 
     - name: 构建并命名（Windows，仅含图标）
       run: |
+        # 明确指定脚本路径
         pyinstaller --onefile --windowed ^
           --name="${{ matrix.asset-name }}" ^
-          --icon="icon.ico" ^  # 仅添加图标
-          QT_ChartAnalyzer.py  # 移除字体文件的--add-data参数
+          --icon="icon.ico" ^
+          .\QT_ChartAnalyzer.py  # 使用Windows路径格式
         echo "Windows 构建产物："
         dir dist\
       if: matrix.os == 'windows-latest'
