@@ -29,7 +29,6 @@ jobs:
           - os: windows-latest
             system: windows
             ext: '.exe'
-            # 修复：asset-name 已包含 .exe，无需额外添加
             asset-name: PyQT_PhiChartSearch_${{ github.event.inputs.version }}_windows_x64
             data-sep: ";"
       fail-fast: false
@@ -96,7 +95,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.asset-name }}${{ matrix.ext }}
-        # 修复：直接使用构建生成的文件名，避免路径拼接错误
         path: |
           dist/${{ matrix.asset-name }}${{ matrix.ext }}
           dist/icon.ico
@@ -111,6 +109,11 @@ jobs:
     name: 发布版本 ${{ github.event.inputs.version }}
 
     steps:
+      - name: 检出完整Git仓库（含历史和标签）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 拉取所有历史，确保能访问标签
+
       - name: 下载产物
         uses: actions/download-artifact@v4
         with:
@@ -124,8 +127,17 @@ jobs:
 
       - name: 确保PyQt标签存在
         run: |
+          # 确认当前目录是Git仓库
+          if [ ! -d .git ]; then
+            echo "错误：不是Git仓库目录！" && exit 1
+          fi
+          # 检查并创建标签
           if ! git tag | grep -q "^PyQt$"; then
-            git tag PyQt && git push origin PyQt
+            git tag PyQt
+            git push origin PyQt
+            echo "创建PyQt标签成功"
+          else
+            echo "PyQt标签已存在"
           fi
         shell: bash
 
@@ -135,7 +147,6 @@ jobs:
           tag_name: PyQt
           name: PyQT版 ${{ github.event.inputs.version }}
           body_path: release.md
-          # 修复：匹配正确的产物路径
           files: |
             ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_linux_x64/*
             ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe/*
