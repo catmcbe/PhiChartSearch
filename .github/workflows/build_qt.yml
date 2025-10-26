@@ -45,43 +45,45 @@ jobs:
         pip install pyinstaller
         pip install -r requirements.txt
 
-    - name: 检查字体文件（Linux）
+    - name: 检查图标文件（Linux）
       run: |
-        if [ -f "Source Han Sans & Saira Hybrid-Regular #2934.ttf" ]; then
-          echo "字体文件存在"
+        # 仅检查图标文件
+        if [ -f "icon.ico" ]; then
+          echo "图标文件存在"
         else
-          echo "错误：未找到字体文件！" && exit 1
+          echo "错误：未找到图标文件！" && exit 1
         fi
       if: matrix.os == 'ubuntu-latest'
       shell: bash
 
-    - name: 检查字体文件（Windows）
+    - name: 检查图标文件（Windows）
       run: |
-        if exist "Source Han Sans & Saira Hybrid-Regular #2934.ttf" (
-          echo 字体文件存在
+        # 仅检查图标文件
+        if exist "icon.ico" (
+          echo 图标文件存在
         ) else (
-          echo 错误：未找到字体文件！ && exit 1
+          echo 错误：未找到图标文件！ && exit 1
         )
       if: matrix.os == 'windows-latest'
       shell: cmd
 
-    - name: 构建并命名（Linux）
+    - name: 构建并命名（Linux，仅含图标）
       run: |
-        pyinstaller --onefile --windowed --name="${{ matrix.asset-name }}" \
-          --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf:." \
-          QT_ChartAnalyzer.py
-        # 确认构建产物路径和名称
+        pyinstaller --onefile --windowed \
+          --name="${{ matrix.asset-name }}" \
+          --icon="icon.ico" \  # 仅添加图标
+          QT_ChartAnalyzer.py  # 移除字体文件的--add-data参数
         echo "Linux 构建产物："
         ls -l dist/
       if: matrix.os == 'ubuntu-latest'
       shell: bash
 
-    - name: 构建并命名（Windows）
+    - name: 构建并命名（Windows，仅含图标）
       run: |
-        pyinstaller --onefile --windowed --name="${{ matrix.asset-name }}" ^
-          --add-data "Source Han Sans & Saira Hybrid-Regular #2934.ttf;." ^
-          QT_ChartAnalyzer.py
-        # 确认构建产物路径和名称
+        pyinstaller --onefile --windowed ^
+          --name="${{ matrix.asset-name }}" ^
+          --icon="icon.ico" ^  # 仅添加图标
+          QT_ChartAnalyzer.py  # 移除字体文件的--add-data参数
         echo "Windows 构建产物："
         dir dist\
       if: matrix.os == 'windows-latest'
@@ -91,7 +93,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.asset-name }}
-        # 直接使用dist目录下的产物（避免路径拼接错误）
         path: |
           dist/${{ matrix.asset-name }}
           dist/${{ matrix.asset-name }}${{ matrix.ext }}
@@ -120,13 +121,23 @@ jobs:
           ls -lR ./artifacts
         shell: bash
 
-      - name: 上传到Release
+      - name: 创建或使用 PyQt 标签
+        run: |
+          if ! git tag | grep -q "^PyQt$"; then
+            git tag PyQt
+            git push origin PyQt
+            echo "创建 PyQt 标签"
+          else
+            echo "PyQt 标签已存在，直接使用"
+          fi
+        shell: bash
+
+      - name: 上传到 Release（使用 PyQt 标签）
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.version }}
+          tag_name: PyQt
           name: PyQT 版发布 ${{ github.event.inputs.version }}
           body_path: release.md
-          # 匹配 artifact 中的产物（ artifact 名称即文件名）
           files: |
             ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_linux_x64/*
             ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe/*

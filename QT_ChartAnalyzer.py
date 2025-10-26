@@ -111,6 +111,8 @@ def get_audio_duration(audio_path):
     except:
         return None
 
+# 移除find_system_font函数，因为我们不再需要系统字体查找功能
+
 def create_chart_art(project_folder, project_name, project_level, path_value, font_path=None):
     """创建曲绘图片"""
     try:
@@ -122,23 +124,31 @@ def create_chart_art(project_folder, project_name, project_level, path_value, fo
         image = Image.new('RGB', (width, height), 'white')
         draw = ImageDraw.Draw(image)
         
+        # 初始化字体变量
+        title_font = None
+        level_font = None
+        
         # 选择字体
         if font_path and os.path.exists(font_path):
+            # 尝试将输入视为字体文件路径
             try:
                 title_font = ImageFont.truetype(font_path, 160)
                 level_font = ImageFont.truetype(font_path, 80)
             except:
-                font_path = "Source Han Sans & Saira Hybrid-Regular #2934.ttf"
+                # 字体文件加载失败，使用默认字体
+                title_font = ImageFont.load_default()
+                level_font = ImageFont.load_default()
+        else:
+            # 没有提供字体或字体文件不存在，使用默认字体
+            title_font = ImageFont.load_default()
+            level_font = ImageFont.load_default()
         
-        # 默认字体路径
-        if not font_path or not os.path.exists(font_path):
-            font_path = "Source Han Sans & Saira Hybrid-Regular #2934.ttf"
-        
+        # 确保字体有效，如果默认字体不可用则使用基本字体
         try:
-            title_font = ImageFont.truetype(font_path, 160)
-            level_font = ImageFont.truetype(font_path, 80)
+            # 测试字体是否可用
+            draw.text((0, 0), "Test", font=title_font)
         except:
-            # 如果字体加载失败，使用默认字体
+            # 如果字体不可用，使用基本的位图字体
             title_font = ImageFont.load_default()
             level_font = ImageFont.load_default()
         
@@ -271,7 +281,7 @@ class MainWindow(QMainWindow):
         
     def initUI(self):
         self.setWindowTitle('PhiChartSearch谱面工程管理器')
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 1000, 700)  # 扩大主界面尺寸
         
         # 创建中心部件和主布局
         central_widget = QWidget()
@@ -399,6 +409,8 @@ class MainWindow(QMainWindow):
             charter = dialog.charter_edit.text().strip()
             create_art = dialog.create_art_check.isChecked()
             font_path = dialog.font_edit.text().strip()
+            use_local_art = dialog.use_local_art_check.isChecked()
+            local_art_path = dialog.local_art_edit.text().strip()
             
             # 验证必填字段
             if not project_name:
@@ -429,16 +441,30 @@ class MainWindow(QMainWindow):
                 project_info['Charter'] = charter
                 update_info_txt(project_folder, project_info)
                 
-                # 如果勾选了自创建曲绘，则生成图片
-                if create_art:
+                # 处理曲绘文件
+                art_created = False
+                if use_local_art and local_art_path and os.path.exists(local_art_path):
+                    # 使用本地曲绘文件
+                    try:
+                        target_art_path = os.path.join(project_folder, f"{path_value}.png")
+                        shutil.copy2(local_art_path, target_art_path)
+                        art_created = True
+                    except Exception as e:
+                        MessageBox("警告", f"复制本地曲绘文件失败：{str(e)}", self).exec_()
+                elif create_art:
+                    # 自动生成曲绘
                     if not font_path:
                         font_path = "Source Han Sans & Saira Hybrid-Regular #2934.ttf"
                     if create_chart_art(project_folder, project_name, level, path_value, font_path):
-                        MessageBox("成功", "曲绘图片创建成功！", self).exec_()
+                        art_created = True
                     else:
                         MessageBox("警告", "曲绘图片创建失败，但工程已创建。", self).exec_()
                 
-                MessageBox("成功", "工程创建成功！", self).exec_()
+                if art_created:
+                    MessageBox("成功", "工程创建成功，曲绘已处理！", self).exec_()
+                else:
+                    MessageBox("成功", "工程创建成功！", self).exec_()
+                
                 self.refresh_project_list()
                 
                 # 自动打开新创建的工程
@@ -506,7 +532,7 @@ class CreateProjectDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("创建新工程")
-        self.setFixedSize(450, 400)
+        self.setFixedSize(450, 700)
         self.initUI()
         
     def initUI(self):
@@ -548,23 +574,60 @@ class CreateProjectDialog(QDialog):
         self.charter_edit.setText("PhiChartSearch")
         layout.addWidget(self.charter_edit)
         
+        # 曲绘创建选项
+        art_card = CardWidget()
+        art_layout = QVBoxLayout(art_card)
+        art_layout.setContentsMargins(15, 15, 15, 15)
+        art_layout.setSpacing(10)
+        
+        art_title = StrongBodyLabel("曲绘创建选项")
+        art_layout.addWidget(art_title)
+        
         # 是否自创建曲绘
-        self.create_art_check = CheckBox("是否自创建曲绘")
-        layout.addWidget(self.create_art_check)
+        self.create_art_check = CheckBox("自动生成曲绘")
+        self.create_art_check.stateChanged.connect(self.on_create_art_check_changed)
+        art_layout.addWidget(self.create_art_check)
         
         # 字体选择
-        font_label = BodyLabel("曲绘字体（可选）")
-        layout.addWidget(font_label)
+        self.font_label = BodyLabel("曲绘字体（可选）")
+        self.font_label.setEnabled(False)
+        art_layout.addWidget(self.font_label)
         
         font_layout = QHBoxLayout()
         self.font_edit = LineEdit()
-        self.font_edit.setText("Source Han Sans & Saira Hybrid-Regular #2934.ttf")
+        self.font_edit.setPlaceholderText("请选择字体文件")
+        self.font_edit.setEnabled(False)
         font_layout.addWidget(self.font_edit)
         
         self.font_button = PushButton("浏览")
         self.font_button.clicked.connect(self.browse_font)
+        self.font_button.setEnabled(False)
         font_layout.addWidget(self.font_button)
-        layout.addLayout(font_layout)
+        art_layout.addLayout(font_layout)
+        
+        # 使用本地曲绘文件
+        self.use_local_art_check = CheckBox("使用本地曲绘文件")
+        self.use_local_art_check.stateChanged.connect(self.on_use_local_art_check_changed)
+        art_layout.addWidget(self.use_local_art_check)
+        
+        # 本地曲绘文件选择
+        self.local_art_label = BodyLabel("本地曲绘文件")
+        self.local_art_label.setEnabled(False)
+        art_layout.addWidget(self.local_art_label)
+        
+        local_art_layout = QHBoxLayout()
+        self.local_art_edit = LineEdit()
+        self.local_art_edit.setPlaceholderText("请选择本地曲绘文件")
+        self.local_art_edit.setEnabled(False)
+        local_art_layout.addWidget(self.local_art_edit)
+        
+        self.local_art_button = PushButton("浏览")
+        self.local_art_button.clicked.connect(self.browse_local_art)
+        self.local_art_button.setEnabled(False)
+        local_art_layout.addWidget(self.local_art_button)
+        art_layout.addLayout(local_art_layout)
+        
+        layout.addWidget(art_card)
         
         # 按钮
         button_layout = QHBoxLayout()
@@ -580,6 +643,26 @@ class CreateProjectDialog(QDialog):
         
         layout.addLayout(button_layout)
         
+    def on_create_art_check_changed(self, state):
+        """处理自动生成曲绘复选框状态变化"""
+        enabled = state == Qt.Checked
+        self.font_label.setEnabled(enabled)
+        self.font_edit.setEnabled(enabled)
+        self.font_button.setEnabled(enabled)
+        # 如果启用了自动生成曲绘，则禁用使用本地曲绘文件
+        if enabled:
+            self.use_local_art_check.setChecked(False)
+    
+    def on_use_local_art_check_changed(self, state):
+        """处理使用本地曲绘文件复选框状态变化"""
+        enabled = state == Qt.Checked
+        self.local_art_label.setEnabled(enabled)
+        self.local_art_edit.setEnabled(enabled)
+        self.local_art_button.setEnabled(enabled)
+        # 如果启用了使用本地曲绘文件，则禁用自动生成曲绘
+        if enabled:
+            self.create_art_check.setChecked(False)
+    
     def browse_font(self):
         """浏览选择字体文件"""
         font_path, _ = QFileDialog.getOpenFileName(
@@ -590,6 +673,17 @@ class CreateProjectDialog(QDialog):
         )
         if font_path:
             self.font_edit.setText(font_path)
+    
+    def browse_local_art(self):
+        """浏览选择本地曲绘文件"""
+        image_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择曲绘文件",
+            "",
+            "图片文件 (*.png *.jpg *.jpeg);;所有文件 (*.*)"
+        )
+        if image_path:
+            self.local_art_edit.setText(image_path)
 
 class ProjectWindow(QMainWindow):
     def __init__(self, project_name, project_folder, project_info, parent=None):
@@ -598,7 +692,16 @@ class ProjectWindow(QMainWindow):
         self.project_folder = project_folder
         self.project_info = project_info
         self.parent = parent
+        # 连接窗口关闭事件
+        self.setAttribute(Qt.WA_DeleteOnClose, True)
         self.initUI()
+        
+    def closeEvent(self, event):
+        """窗口关闭事件处理"""
+        # 从当前窗口字典中移除引用
+        if self.project_name in current_windows['projects']:
+            del current_windows['projects'][self.project_name]
+        event.accept()
         
     def initUI(self):
         self.setWindowTitle(f"工程管理 - {self.project_name}")
@@ -951,7 +1054,7 @@ class ChartSearchWindow(QDialog):
         self.main_window = main_window
         self.parent = parent
         self.setWindowTitle("谱面搜索")
-        self.setFixedSize(800, 600)  # 调整窗口大小
+        self.setFixedSize(800, 700)  # 调整窗口大小，增加高度
         self.initUI()
         
     def initUI(self):
@@ -1570,29 +1673,48 @@ class ModifyArtDialog(QDialog):
         title_label = TitleLabel("修改曲绘")
         layout.addWidget(title_label)
         
-        # 字体选择
-        font_label = BodyLabel("曲绘字体（可选）")
-        layout.addWidget(font_label)
+        # 字体选择区域
+        font_card = CardWidget()
+        font_layout = QVBoxLayout(font_card)
+        font_layout.setContentsMargins(15, 15, 15, 15)
+        font_layout.setSpacing(10)
         
-        font_layout = QHBoxLayout()
+        font_title = StrongBodyLabel("字体选择")
+        font_layout.addWidget(font_title)
+        
+        # 字体选择控件
+        font_select_layout = QHBoxLayout()
         self.font_edit = LineEdit()
-        self.font_edit.setText("Source Han Sans & Saira Hybrid-Regular #2934.ttf")
-        font_layout.addWidget(self.font_edit)
+        self.font_edit.setPlaceholderText("请选择字体文件")
+        font_select_layout.addWidget(self.font_edit)
         
         self.font_button = PushButton("浏览")
         self.font_button.clicked.connect(self.browse_font)
-        font_layout.addWidget(self.font_button)
-        layout.addLayout(font_layout)
+        font_select_layout.addWidget(self.font_button)
+        font_layout.addLayout(font_select_layout)
+        
+        layout.addWidget(font_card)
+        
+        # 操作按钮区域
+        action_card = CardWidget()
+        action_layout = QVBoxLayout(action_card)
+        action_layout.setContentsMargins(15, 15, 15, 15)
+        action_layout.setSpacing(10)
+        
+        action_title = StrongBodyLabel("操作选项")
+        action_layout.addWidget(action_title)
         
         # 重新生成曲绘按钮
         self.regenerate_button = PrimaryPushButton("重新生成曲绘")
         self.regenerate_button.clicked.connect(self.regenerate_art)
-        layout.addWidget(self.regenerate_button)
+        action_layout.addWidget(self.regenerate_button)
         
         # 选择本地图片替换按钮
         self.replace_button = PushButton("选择本地图片替换")
         self.replace_button.clicked.connect(self.replace_art)
-        layout.addWidget(self.replace_button)
+        action_layout.addWidget(self.replace_button)
+        
+        layout.addWidget(action_card)
         
         # 按钮
         button_layout = QHBoxLayout()
@@ -1618,8 +1740,7 @@ class ModifyArtDialog(QDialog):
     def regenerate_art(self):
         """重新生成曲绘"""
         font_path = self.font_edit.text().strip()
-        if not font_path:
-            font_path = "Source Han Sans & Saira Hybrid-Regular #2934.ttf"
+        # 不再设置默认字体文件，如果用户没有选择字体，则使用系统默认字体
             
         if create_chart_art(self.project_folder, self.project_info['Name'], self.project_info['Level'], self.project_info['Path'], font_path):
             MessageBox("成功", "曲绘已重新生成！", self).exec_()
