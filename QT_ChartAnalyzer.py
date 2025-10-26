@@ -63,8 +63,8 @@ Name: {project_name}
 Path: {path_value}
 Chart: {path_value}.json
 Level: 
-Composer: PhiChartSearch
-Charter: PhiChartSearch
+Composer: Phigros
+Charter: Phigros
 """
     info_path = os.path.join(project_folder, "info.txt")
     with open(info_path, 'w', encoding='utf-8') as f:
@@ -454,8 +454,8 @@ class MainWindow(QMainWindow):
                 elif create_art:
                     # 自动生成曲绘
                     if not font_path:
-                        font_path = "Source Han Sans & Saira Hybrid-Regular #2934.ttf"
-                    if create_chart_art(project_folder, project_name, level, path_value, font_path):
+                        MessageBox("警告", "未设置曲绘字体，无法生成曲绘！", self).exec_()
+                    elif create_chart_art(project_folder, project_name, level, path_value, font_path):
                         art_created = True
                     else:
                         MessageBox("警告", "曲绘图片创建失败，但工程已创建。", self).exec_()
@@ -563,7 +563,7 @@ class CreateProjectDialog(QDialog):
         layout.addWidget(composer_label)
         
         self.composer_edit = LineEdit()
-        self.composer_edit.setText("PhiChartSearch")
+        self.composer_edit.setText("Phigros")
         layout.addWidget(self.composer_edit)
         
         # Charter
@@ -571,7 +571,7 @@ class CreateProjectDialog(QDialog):
         layout.addWidget(charter_label)
         
         self.charter_edit = LineEdit()
-        self.charter_edit.setText("PhiChartSearch")
+        self.charter_edit.setText("Phigros")
         layout.addWidget(self.charter_edit)
         
         # 曲绘创建选项
@@ -1740,9 +1740,10 @@ class ModifyArtDialog(QDialog):
     def regenerate_art(self):
         """重新生成曲绘"""
         font_path = self.font_edit.text().strip()
-        # 不再设置默认字体文件，如果用户没有选择字体，则使用系统默认字体
             
-        if create_chart_art(self.project_folder, self.project_info['Name'], self.project_info['Level'], self.project_info['Path'], font_path):
+        if not font_path:
+            MessageBox("警告", "未设置曲绘字体，无法生成曲绘！", self).exec_()
+        elif create_chart_art(self.project_folder, self.project_info['Name'], self.project_info['Level'], self.project_info['Path'], font_path):
             MessageBox("成功", "曲绘已重新生成！", self).exec_()
             self.accept()  # 关闭对话框并刷新父窗口
         else:

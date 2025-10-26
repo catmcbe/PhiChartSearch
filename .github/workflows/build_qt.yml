@@ -15,7 +15,7 @@ on:
 
 jobs:
   build:
-    name: 在 ${{ matrix.os }} 上构建 PyQT 版
+    name: 在 ${{ matrix.os }} 上构建
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -25,95 +25,85 @@ jobs:
             system: linux
             ext: ''
             asset-name: PyQT_PhiChartSearch_${{ github.event.inputs.version }}_linux_x64
+            data-sep: ":"
           - os: windows-latest
             system: windows
             ext: '.exe'
             asset-name: PyQT_PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe
+            data-sep: ";"
       fail-fast: false
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: 验证 QT_ChartAnalyzer.py 存在（Linux）
+    - name: 验证文件路径（Linux）
       run: |
-        if [ -f "QT_ChartAnalyzer.py" ]; then
-          echo "找到 QT_ChartAnalyzer.py"
+        # 验证 py和ico在同一路径
+        if [ -f "QT_ChartAnalyzer.py" ] && [ -f "icon.ico" ]; then
+          echo "文件结构正确：py和ico同目录"
         else
-          echo "错误：未找到 QT_ChartAnalyzer.py！请确认文件名是否正确" && exit 1
+          echo "错误：QT_ChartAnalyzer.py或icon.ico不存在于当前目录！" && exit 1
         fi
       if: matrix.os == 'ubuntu-latest'
       shell: bash
 
-    - name: 验证 QT_ChartAnalyzer.py 存在（Windows）
+    - name: 验证文件路径（Windows）
       run: |
-        if exist "QT_ChartAnalyzer.py" (
-          echo 找到 QT_ChartAnalyzer.py
+        if exist "QT_ChartAnalyzer.py" if exist "icon.ico" (
+          echo 文件结构正确：py和ico同目录
         ) else (
-          echo 错误：未找到 QT_ChartAnalyzer.py！请确认文件名是否正确 && exit 1
+          echo 错误：QT_ChartAnalyzer.py或icon.ico不存在于当前目录！ && exit 1
         )
       if: matrix.os == 'windows-latest'
       shell: cmd
 
-    - name: 配置Python环境
+    - name: 配置Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
-    - name: 安装依赖包
+    - name: 安装依赖
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
         pip install -r requirements.txt
 
-    - name: 检查图标文件（Linux）
+    - name: 构建（Linux）
       run: |
-        if [ -f "icon.ico" ]; then
-          echo "图标文件存在"
-        else
-          echo "错误：未找到 icon.ico！" && exit 1
-        fi
-      if: matrix.os == 'ubuntu-latest'
-      shell: bash
-
-    - name: 检查图标文件（Windows）
-      run: |
-        if exist "icon.ico" (
-          echo 图标文件存在
-        ) else (
-          echo 错误：未找到 icon.ico！ && exit 1
-        )
-      if: matrix.os == 'windows-latest'
-      shell: cmd
-
-    - name: 构建并命名（Linux，仅含图标）
-      run: |
+        # 关键：将icon.ico打包到根目录（与可执行文件同级）
+        # 适配代码中的"/icon.ico"路径
         pyinstaller --onefile --windowed \
           --name="${{ matrix.asset-name }}" \
-          --icon="icon.ico" \
+          --icon="icon.ico" \  # 作为程序图标
+          --add-data "icon.ico${{ matrix.data-sep }}." \  # 打包到根目录
           ./QT_ChartAnalyzer.py
-        echo "Linux 构建产物："
+        # 验证打包结果
+        echo "打包后的文件："
         ls -l dist/
       if: matrix.os == 'ubuntu-latest'
       shell: bash
 
-    - name: 构建并命名（Windows，仅含图标）
+    - name: 构建（Windows）
       run: |
+        # 适配Windows下的根目录路径
         pyinstaller --onefile --windowed ^
           --name="${{ matrix.asset-name }}" ^
-          --icon="icon.ico" ^
+          --icon="icon.ico" ^  # 作为程序图标
+          --add-data "icon.ico${{ matrix.data-sep }}." ^  # 打包到根目录
           .\QT_ChartAnalyzer.py
-        echo Windows 构建产物：
+        # 验证打包结果
+        echo 打包后的文件：
         dir dist\
       if: matrix.os == 'windows-latest'
-      shell: cmd  # 严格使用cmd，移除所有#注释
+      shell: cmd
 
-    - name: 上传二进制产物
+    - name: 上传产物
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.asset-name }}
         path: |
-          dist/${{ matrix.asset-name }}
           dist/${{ matrix.asset-name }}${{ matrix.ext }}
+          dist/icon.ico  # 确保图标被上传
         if-no-files-found: error
 
   release:
@@ -122,39 +112,26 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    name: 发布 PyQT 版 ${{ github.event.inputs.version }}
+    name: 发布版本 ${{ github.event.inputs.version }}
 
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 下载所有产物
+      - name: 下载产物
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
 
-      - name: 列出下载的产物（调试用）
-        run: |
-          echo "下载的产物结构："
-          ls -lR ./artifacts
-        shell: bash
-
-      - name: 创建或使用 PyQt 标签
+      - name: 确保PyQt标签存在
         run: |
           if ! git tag | grep -q "^PyQt$"; then
-            git tag PyQt
-            git push origin PyQt
-            echo "创建 PyQt 标签"
-          else
-            echo "PyQt 标签已存在，直接使用"
+            git tag PyQt && git push origin PyQt
           fi
         shell: bash
 
-      - name: 上传到 Release（使用 PyQt 标签）
+      - name: 发布到Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: PyQt
-          name: PyQT 版发布 ${{ github.event.inputs.version }}
+          name: PyQT版 ${{ github.event.inputs.version }}
           body_path: release.md
           files: |
             ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_linux_x64/*
