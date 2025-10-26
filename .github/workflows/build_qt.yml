@@ -29,7 +29,8 @@ jobs:
           - os: windows-latest
             system: windows
             ext: '.exe'
-            asset-name: PyQT_PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe
+            # 修复：asset-name 已包含 .exe，无需额外添加
+            asset-name: PyQT_PhiChartSearch_${{ github.event.inputs.version }}_windows_x64
             data-sep: ";"
       fail-fast: false
 
@@ -74,6 +75,7 @@ jobs:
           --icon="icon.ico" \
           --add-data "icon.ico${{ matrix.data-sep }}." \
           ./QT_ChartAnalyzer.py
+        echo "Linux 产物列表："
         ls -l dist/
       if: matrix.os == 'ubuntu-latest'
       shell: bash
@@ -85,6 +87,7 @@ jobs:
           --icon="icon.ico" ^
           --add-data "icon.ico${{ matrix.data-sep }}." ^
           .\QT_ChartAnalyzer.py
+        echo "Windows 产物列表："
         dir dist\
       if: matrix.os == 'windows-latest'
       shell: cmd
@@ -92,7 +95,8 @@ jobs:
     - name: 上传产物
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.asset-name }}
+        name: ${{ matrix.asset-name }}${{ matrix.ext }}
+        # 修复：直接使用构建生成的文件名，避免路径拼接错误
         path: |
           dist/${{ matrix.asset-name }}${{ matrix.ext }}
           dist/icon.ico
@@ -112,6 +116,12 @@ jobs:
         with:
           path: ./artifacts
 
+      - name: 查看下载产物结构
+        run: |
+          echo "下载产物结构："
+          ls -lR ./artifacts
+        shell: bash
+
       - name: 确保PyQt标签存在
         run: |
           if ! git tag | grep -q "^PyQt$"; then
@@ -125,6 +135,7 @@ jobs:
           tag_name: PyQt
           name: PyQT版 ${{ github.event.inputs.version }}
           body_path: release.md
+          # 修复：匹配正确的产物路径
           files: |
             ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_linux_x64/*
             ./artifacts/PyQT_PhiChartSearch_${{ github.event.inputs.version }}_windows_x64.exe/*
