@@ -34,7 +34,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # 新增步骤：检查目标脚本是否存在
     - name: 验证 QT_ChartAnalyzer.py 存在（Linux）
       run: |
         if [ -f "QT_ChartAnalyzer.py" ]; then
@@ -88,11 +87,10 @@ jobs:
 
     - name: 构建并命名（Linux，仅含图标）
       run: |
-        # 明确指定脚本路径，确保无空格问题
         pyinstaller --onefile --windowed \
           --name="${{ matrix.asset-name }}" \
           --icon="icon.ico" \
-          ./QT_ChartAnalyzer.py  # 增加当前目录前缀，避免路径解析问题
+          ./QT_ChartAnalyzer.py
         echo "Linux 构建产物："
         ls -l dist/
       if: matrix.os == 'ubuntu-latest'
@@ -100,15 +98,14 @@ jobs:
 
     - name: 构建并命名（Windows，仅含图标）
       run: |
-        # 明确指定脚本路径
         pyinstaller --onefile --windowed ^
           --name="${{ matrix.asset-name }}" ^
           --icon="icon.ico" ^
-          .\QT_ChartAnalyzer.py  # 使用Windows路径格式
-        echo "Windows 构建产物："
+          .\QT_ChartAnalyzer.py
+        echo Windows 构建产物：
         dir dist\
       if: matrix.os == 'windows-latest'
-      shell: cmd
+      shell: cmd  # 严格使用cmd，移除所有#注释
 
     - name: 上传二进制产物
       uses: actions/upload-artifact@v4
