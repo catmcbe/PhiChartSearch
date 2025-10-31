@@ -36,20 +36,20 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: 验证文件路径（Linux）
+    - name: 验证文件结构（Linux）
       run: |
         if [ -f "QT_ChartAnalyzer.py" ] && [ -f "icon.ico" ]; then
-          echo "文件结构正确"
+          echo "源码文件结构正确"
         else
           echo "错误：文件缺失！" && exit 1
         fi
       if: matrix.os == 'ubuntu-latest'
       shell: bash
 
-    - name: 验证文件路径（Windows）
+    - name: 验证文件结构（Windows）
       run: |
         if exist "QT_ChartAnalyzer.py" if exist "icon.ico" (
-          echo 文件结构正确
+          echo 源码文件结构正确
         ) else (
           echo 错误：文件缺失！ && exit 1
         )
@@ -74,7 +74,7 @@ jobs:
           --icon="icon.ico" \
           --add-data "icon.ico${{ matrix.data-sep }}." \
           ./QT_ChartAnalyzer.py
-        echo "Linux 产物列表："
+        echo "Linux 产物列表"
         ls -l dist/
       if: matrix.os == 'ubuntu-latest'
       shell: bash
@@ -86,7 +86,7 @@ jobs:
           --icon="icon.ico" ^
           --add-data "icon.ico${{ matrix.data-sep }}." ^
           .\QT_ChartAnalyzer.py
-        echo "Windows 产物列表："
+        echo "Windows 产物列表"
         dir dist\
       if: matrix.os == 'windows-latest'
       shell: cmd
@@ -109,35 +109,26 @@ jobs:
     name: 发布版本 ${{ github.event.inputs.version }}
 
     steps:
-      - name: 检出完整Git仓库（含历史和标签）
+      - name: 检出Git仓库
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 拉取所有历史，确保能访问标签
+          fetch-depth: 0
 
       - name: 下载产物
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
 
-      - name: 查看下载产物结构
+      - name: 查看产物结构
         run: |
-          echo "下载产物结构："
+          echo "产物结构"
           ls -lR ./artifacts
         shell: bash
 
-      - name: 确保PyQt标签存在
+      - name: 确认PyQt标签存在
         run: |
-          # 确认当前目录是Git仓库
-          if [ ! -d .git ]; then
-            echo "错误：不是Git仓库目录！" && exit 1
-          fi
-          # 检查并创建标签
           if ! git tag | grep -q "^PyQt$"; then
-            git tag PyQt
-            git push origin PyQt
-            echo "创建PyQt标签成功"
-          else
-            echo "PyQt标签已存在"
+            git tag PyQt && git push origin PyQt
           fi
         shell: bash
 

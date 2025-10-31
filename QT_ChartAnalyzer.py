@@ -350,6 +350,11 @@ class MainWindow(QMainWindow):
         self.refresh_button.clicked.connect(self.refresh_project_list)
         button_layout.addWidget(self.refresh_button)
         
+        # 添加关于按钮
+        self.about_button = PushButton('关于')
+        self.about_button.clicked.connect(self.show_about)
+        button_layout.addWidget(self.about_button)
+        
         main_layout.addLayout(button_layout)
         
         # 状态栏
@@ -527,6 +532,11 @@ class MainWindow(QMainWindow):
             self.refresh_project_list()
         except Exception as e:
             MessageBox("错误", f"删除工程失败：{str(e)}", self).exec_()
+            
+    def show_about(self):
+        """显示关于对话框"""
+        dialog = AboutDialog(self)
+        dialog.exec_()
 
 class CreateProjectDialog(QDialog):
     def __init__(self, parent=None):
@@ -1777,11 +1787,82 @@ def main():
     # 创建并显示主窗口
     main_window = MainWindow()
     # 设置窗口图标
-    if os.path.exists("icon.ico"):
-        main_window.setWindowIcon(QIcon("icon.ico"))
+    # 获取当前脚本所在目录
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    icon_path = os.path.join(script_dir, "icon.ico")
+    if os.path.exists(icon_path):
+        main_window.setWindowIcon(QIcon(icon_path))
     main_window.show()
     
     sys.exit(app.exec_())
+
+class AboutDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("关于 PhiChartSearch")
+        self.setFixedSize(500, 400)
+        self.initUI()
+        
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        
+        # 标题
+        title_label = TitleLabel("PhiChartSearch")
+        layout.addWidget(title_label)
+        
+        # 版本信息
+        version_label = StrongBodyLabel("版本：v1.0.0")
+        layout.addWidget(version_label)
+        
+        # 技术信息
+        tech_info = BodyLabel("基于 Python 语言\nGUI 界面框架：PyQt5 QFluentWidgets")
+        layout.addWidget(tech_info)
+        
+        # 版权声明标题
+        copyright_title = StrongBodyLabel("版权声明")
+        layout.addWidget(copyright_title)
+        
+        # 版权声明内容
+        copyright_text = "本软件遵循 GPLv3 协议，请遵守开源协议。\n" \
+                         "本项目只用于搜索Phigros的音频文件和谱面文件\n" \
+                         "程序内不包含任何游戏版权保护版权文件\n" \
+                         "请勿传播拆包后文件\n" \
+                         "请勿传播搜索后文件"
+        copyright_label = BodyLabel(copyright_text)
+        layout.addWidget(copyright_label)
+        
+        # 链接按钮区域
+        link_layout = QHBoxLayout()
+        
+        # GitHub按钮
+        self.github_button = PushButton("GitHub")
+        self.github_button.clicked.connect(self.open_github)
+        link_layout.addWidget(self.github_button)
+        
+        # 哔哩哔哩按钮
+        self.bilibili_button = PushButton("哔哩哔哩")
+        self.bilibili_button.clicked.connect(self.open_bilibili)
+        link_layout.addWidget(self.bilibili_button)
+        
+        layout.addLayout(link_layout)
+        
+        # 关闭按钮
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        self.close_button = PushButton("关闭")
+        self.close_button.clicked.connect(self.accept)
+        button_layout.addWidget(self.close_button)
+        
+        layout.addLayout(button_layout)
+        
+    def open_github(self):
+        """打开GitHub链接"""
+        QDesktopServices.openUrl(QUrl("https://github.com/catmcbe/PhiChartSearch"))
+        
+    def open_bilibili(self):
+        """打开哔哩哔哩链接"""
+        QDesktopServices.openUrl(QUrl("https://space.bilibili.com/587887115"))
 
 if __name__ == '__main__':
     main()
